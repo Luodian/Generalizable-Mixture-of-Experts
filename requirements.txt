@@ -1,0 +1,7 @@
+gdown==4.2.0
+numpy==1.21.4
+Pillow==9.0.1
+prettytable==2.1.0
+sconf==0.2.3
+tensorboardX==2.5
+git+https://github.com/openai/CLIP.git
