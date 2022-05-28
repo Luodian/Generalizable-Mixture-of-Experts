@@ -1,7 +1,5 @@
 # Welcome to Sparse Fusion Mixture-of-Experts for Domain Generalization
 
-DomainBed is a PyTorch suite containing benchmark datasets and algorithms for domain generalization, as introduced in [In Search of Lost Domain Generalization](https://arxiv.org/abs/2007.01434).
-
 ## Available model selection criteria
 
 [Model selection criteria](domainbed/model_selection.py) differ in what data is used to choose the best hyper-parameters for a given model:
