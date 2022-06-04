@@ -1,5 +1,16 @@
 # Welcome to Sparse Fusion Mixture-of-Experts for Domain Generalization
 
+### Performance Comparison
+
+$x$-axis is the training iteration time per mini-batch with 160 images (lower is better). 
+
+$y$-axis is the overall accuracy on DomainNet with training-validation model selection criterion (higher is better). 
+
+The **bubble size** and the text floating around demonstrate the run-time memory cost during training (smaller is better)
+<p align="center">
+    <img src="./assets/comp.png" width="100%" />
+</p>
+
 ### Diagram of SF-MoE
 <p align="center">
     <img src="./assets/teaser.png" width="100%" />
