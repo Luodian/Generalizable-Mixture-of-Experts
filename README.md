@@ -1,29 +1,49 @@
 # Welcome to Sparse Fusion Mixture-of-Experts for Domain Generalization
 
-## Available model selection criteria
+### Diagram of SF-MoE
+<p align="center">
+    <img src="./assets/teaser.png" width="100%" />
+</p>
 
-[Model selection criteria](domainbed/model_selection.py) differ in what data is used to choose the best hyper-parameters for a given model:
+## Preparation
 
-* `IIDAccuracySelectionMethod`: A random subset from the data of the training domains.
-* `LeaveOneOutSelectionMethod`: A random subset from the data of a held-out (not training, not testing) domain.
-* `OracleSelectionMethod`: A random subset from the data of the test domain.
+### Dependencies
 
-## Quick start
+```sh
+pip install -r requirements.txt
+```
 
-Download the datasets:
+### Datasets
 
 ```sh
 python3 -m domainbed.scripts.download \
        --data_dir=./domainbed/data
 ```
 
+### Environments
+
+Environment details used in paper for the main experiments on Nvidia V100 GPU.
+
+```shell
+Environment:
+	Python: 3.9
+	PyTorch: 1.8.0
+	Torchvision: 0.8.2
+	CUDA: 10.2
+	CUDNN: 7603
+	NumPy: 1.21.4
+	PIL: 7.2.0
+```
+
+## Start Training
+
 Train a model:
 
 ```sh
 python3 -m domainbed.scripts.train\
-       --data_dir=./domainbed/data/MNIST/\
-       --algorithm IGA\
-       --dataset ColoredMNIST\
+       --data_dir=./domainbed/data/OfficeHome/\
+       --algorithm SFMOE\
+       --dataset OfficeHome\
        --test_env 2
 ```
 
@@ -33,23 +53,8 @@ Launch a sweep:
 python -m domainbed.scripts.sweep launch\
        --data_dir=/my/datasets/path\
        --output_dir=/my/sweep/output/path\
-       --command_launcher MyLauncher
+       --command_launcher multi_gpu
 ```
-
-Here, `MyLauncher` is your cluster's command launcher, as implemented in `command_launchers.py`. At the time of writing, the entire sweep trains tens of thousands of models (all algorithms x all datasets x 3 independent trials x 20 random hyper-parameter choices). You can pass arguments to make the sweep smaller:
-
-```sh
-python -m domainbed.scripts.sweep launch\
-       --data_dir=/my/datasets/path\
-       --output_dir=/my/sweep/output/path\
-       --command_launcher MyLauncher\
-       --algorithms ERM DANN\
-       --datasets RotatedMNIST VLCS\
-       --n_hparams 5\
-       --n_trials 1
-```
-
-After all jobs have either succeeded or failed, you can delete the data from failed jobs with ``python -m domainbed.scripts.sweep delete_incomplete`` and then re-launch them by running ``python -m domainbed.scripts.sweep launch`` again. Specify the same command-line arguments in all calls to `sweep` as you did the first time; this is how the sweep script knows which jobs were launched originally.
 
 To view the results of your sweep:
 
@@ -58,19 +63,38 @@ python -m domainbed.scripts.collect_results\
        --input_dir=/my/sweep/output/path
 ````
 
-## Running unit tests
+Our Hyper-parameters for each dataset:
 
-DomainBed includes some unit tests and end-to-end tests. While not exhaustive, but they are a good sanity-check. To run the tests:
 
-```sh
-python -m unittest discover
-```
+|                    | PACS | VLCS | OfficeHome | TerraIncognita | DomainNet |
+|--------------------| ------ | ------ | ------------ | ---------------- | ----------- |
+| Learningfafsfarate | 3e-5 | 1e-5 | 3e-5       | 3e-5           | 3e-5      |
+| Dropout            | 0.0  | 0.5  | 0.1        | 0.0            | 0.1       |
+| Weight decay       | 0.0  | 1e-6 | 1e-6       | 1e-4           | 0.0       |
 
-By default, this only runs tests which don't depend on a dataset directory. To run those tests as well:
+## Experimental Results
 
-```sh
-DATA_DIR=/my/datasets/path python -m unittest discover
-```
+### Available model selection criteria
+
+[Model selection criteria](domainbed/model_selection.py) differ in what data is used to choose the best hyper-parameters for a given model:
+
+* `IIDAccuracySelectionMethod`: A random subset from the data of the training domains.
+* `LeaveOneOutSelectionMethod`: A random subset from the data of a held-out (not training, not testing) domain.
+
+### Train-val selection strategy
+<p align="center">
+    <img src="./assets/train-val.png" width="90%" />
+</p>
+
+### Leave-one-domain-out selection strategy
+<p align="center">
+    <img src="./assets/lodo.png" width="90%" />
+</p>
+
+### Multi-heads Attention Visualization
+<p align="center">
+    <img src="./assets/mha.png" width="90%" />
+</p>
 
 ## License
 
