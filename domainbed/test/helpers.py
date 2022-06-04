@@ -3,7 +3,7 @@
 import torch
 
 DEBUG_DATASETS = ['Debug224']
-DEBUG_ALGORITHMS = ['SparseMOE']
+DEBUG_ALGORITHMS = ['SFMOE']
 
 def make_minibatches(dataset, batch_size):
     """Test helper to make a minibatches array like train.py"""

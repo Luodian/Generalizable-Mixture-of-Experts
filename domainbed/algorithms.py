@@ -60,7 +60,7 @@ ALGORITHMS = [
     'IB_IRM',
     'CAD',
     'CondCAD',
-    'HybridSparseMOE', 'SparseMOE',
+    'HybridSFMOE', 'SFMOE',
     'VIT',
     'Mixer',
 ]
@@ -155,13 +155,13 @@ class ERM_SMA(Algorithm, MovingAvg):
         return self.network_sma(x)
 
 
-class HybridSparseMOE(Algorithm):
+class HybridSFMOE(Algorithm):
     """
-    SparseMOE
+    SFMOE
     """
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(HybridSparseMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
+        super(HybridSFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
         self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, moe_interval=3, num_experts=6, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
@@ -195,7 +195,7 @@ class HybridSparseMOE(Algorithm):
 
 class HybridVIT(Algorithm):
     """
-    SparseMOE
+    SFMOE
     """
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
@@ -221,13 +221,13 @@ class HybridVIT(Algorithm):
             return prediction
 
 
-class SparseMOE(Algorithm):
+class SFMOE(Algorithm):
     """
-    SparseMOE
+    SFMOE
     """
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(SparseMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
+        super(SFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
         self.model = vision_transformer.vit_tiny_patch16_224(pretrained=True, num_classes=num_classes, moe_interval=3, num_experts=6, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
