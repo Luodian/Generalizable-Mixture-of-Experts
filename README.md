@@ -41,13 +41,13 @@ Environment details used in paper for the main experiments on Nvidia V100 GPU.
 
 ```shell
 Environment:
-	Python: 3.9
-	PyTorch: 1.8.0
-	Torchvision: 0.8.2
-	CUDA: 10.2
+	Python: 3.9.7
+	PyTorch: 1.8.1
+	Torchvision: 0.9.1
+	CUDA: 10.1
 	CUDNN: 7603
 	NumPy: 1.21.4
-	PIL: 7.2.0
+	PIL: 9.0.1
 ```
 
 ## Start Training
