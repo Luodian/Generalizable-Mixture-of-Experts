@@ -99,11 +99,11 @@ for item in state_dict.keys():
 Our Hyper-parameters for each dataset:
 
 
-|                    | PACS | VLCS | OfficeHome | TerraIncognita | DomainNet |
-|--------------------| ------ | ------ | ------------ | ---------------- | ----------- |
-| Learningfafsfarate | 3e-5 | 1e-5 | 3e-5       | 3e-5           | 3e-5      |
-| Dropout            | 0.0  | 0.5  | 0.1        | 0.0            | 0.1       |
-| Weight decay       | 0.0  | 1e-6 | 1e-6       | 1e-4           | 0.0       |
+|               | PACS | VLCS | OfficeHome | TerraIncognita | DomainNet |
+|---------------| ------ | ------ | ------------ | ---------------- | ----------- |
+| Learning rate | 3e-5 | 1e-5 | 3e-5       | 3e-5           | 3e-5      |
+| Dropout       | 0.0  | 0.5  | 0.1        | 0.0            | 0.1       |
+| Weight decay  | 0.0  | 1e-6 | 1e-6       | 1e-4           | 0.0       |
 
 ## Experimental Results
 

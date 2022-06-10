@@ -228,7 +228,7 @@ class SFMOE(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(SFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer.deit_small_patch16_224(pretrained=True, num_classes=num_classes, moe_interval=3, num_experts=6, Hierachical=False).cuda()
+        self.model = vision_transformer.deit_small_distilled_patch16_224(pretrained=True, num_classes=num_classes, moe_interval=4, num_experts=4, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
     def update(self, minibatches, unlabeled=None):
@@ -266,8 +266,7 @@ class VIT(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(VIT, self).__init__(input_shape, num_classes, num_domains, hparams)
-        # self.model = timm.create_model('vit_large_patch16_224', pretrained=True, num_classes=num_classes).cuda()
-        self.model = vision_transformer.vit_tiny_patch16_224(num_classes=num_classes, moe_interval=64).cuda()
+        self.model = vision_transformer.vit_small_patch16_224(num_classes=num_classes, moe_interval=64).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
     def update(self, minibatches, unlabeled=None):
@@ -298,14 +297,13 @@ class ERM(Algorithm):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(ERM, self).__init__(input_shape, num_classes, num_domains,
                                   hparams)
-        # self.featurizer = networks.Featurizer(input_shape, self.hparams)
-        # self.classifier = networks.Classifier(
-        #     self.featurizer.n_outputs,
-        #     num_classes,
-        #     self.hparams['nonlinear_classifier'])
+        self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        self.classifier = networks.Classifier(
+            self.featurizer.n_outputs,
+            num_classes,
+            self.hparams['nonlinear_classifier'])
 
-        # self.network = nn.Sequential(self.featurizer, self.classifier).cuda()
-        self.network = timm.create_model('resnet101', num_classes=num_classes)
+        self.network = nn.Sequential(self.featurizer, self.classifier).cuda()
         self.optimizer = torch.optim.Adam(
             self.network.parameters(),
             lr=self.hparams["lr"],
