@@ -1,4 +1,5 @@
 # Welcome to Sparse Fusion Mixture-of-Experts for Domain Generalization
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sparse-fusion-mixture-of-experts-are-domain/domain-generalization-on-domainnet)](https://paperswithcode.com/sota/domain-generalization-on-domainnet?p=sparse-fusion-mixture-of-experts-are-domain)
 
 In this work, we reveal the mixture-of-experts (MoE) model's generalizability on DG by leveraging  to distributively handle multiple aspects of the predictive features across domains.
 
@@ -77,6 +78,23 @@ To view the results of your sweep:
 python -m domainbed.scripts.collect_results\
        --input_dir=/my/sweep/output/path
 ````
+
+To visualize attention heads output
+```shell
+python exps/vis_attention.py
+```
+
+In `vis_attention.py`, load model with trained `pth` file and defined architecture, e.g.,
+
+```python
+model_path = '{project_path}/sweep/output/{exp_name}/d2c8a444c1472737722e9354afe0f994/model.pkl'
+model = vision_transformer.deit_small_patch16_224(pretrained=True, num_classes=0, moe_interval=24, num_experts=4, Hierachical=False).cuda()
+state_dict = torch.load(model_path)['model_dict']
+only_weights = OrderedDict()
+for item in state_dict.keys():
+    if 'head' not in item:
+        only_weights[item.replace('model.', '')] = state_dict[item]
+```
 
 Our Hyper-parameters for each dataset:
 
