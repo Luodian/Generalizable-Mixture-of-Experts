@@ -3,7 +3,7 @@
 
 In this work, we reveal the mixture-of-experts (MoE) model's generalizability on DG by leveraging  to distributively handle multiple aspects of the predictive features across domains.
 
-To this end, we propose **Sparse Fusion Mixture-of-Experts (SF-MoE)**, which incorporates sparsity and fusion mechanisms into the MoE framework to keep the model both sparse and predictive.
+To this end, we propose [**Sparse Fusion Mixture-of-Experts (SF-MoE)**](https://arxiv.org/abs/2206.04046), which incorporates sparsity and fusion mechanisms into the MoE framework to keep the model both sparse and predictive.
 
 ### Performance Comparison
 
