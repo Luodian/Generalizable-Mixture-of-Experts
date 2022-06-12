@@ -546,13 +546,9 @@ def _load_weights(model: VisionTransformer, checkpoint_path: str, prefix: str = 
         block.attn.proj.weight.copy_(_n2p(w[f'{mha_prefix}out/kernel']).flatten(1))
         block.attn.proj.bias.copy_(_n2p(w[f'{mha_prefix}out/bias']))
         for r in range(2):
-            if hasattr(block.mlp, 'experts'):
-                num_experts = getattr(block.mlp, 'experts').w1.shape[0]
-                for ind in range(num_experts):
-                    getattr(block.mlp.experts, f'w{r + 1}')[ind].copy_(torch.from_numpy(w[f'{block_prefix}MlpBlock_3/Dense_{r}/kernel']))
-            else:
-                getattr(block.mlp, f'fc{r + 1}').weight.copy_(_n2p(w[f'{block_prefix}MlpBlock_3/Dense_{r}/kernel']))
-                getattr(block.mlp, f'fc{r + 1}').bias.copy_(_n2p(w[f'{block_prefix}MlpBlock_3/Dense_{r}/bias']))
+            num_experts = getattr(block.mlp, 'experts').w1.shape[0]
+            for ind in range(num_experts):
+                getattr(block.mlp.experts, f'w{r + 1}')[ind].copy_(torch.from_numpy(w[f'{block_prefix}MlpBlock_3/Dense_{r}/kernel']))
         block.norm2.weight.copy_(_n2p(w[f'{block_prefix}LayerNorm_2/scale']))
         block.norm2.bias.copy_(_n2p(w[f'{block_prefix}LayerNorm_2/bias']))
 
