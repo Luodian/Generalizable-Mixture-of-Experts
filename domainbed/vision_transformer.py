@@ -227,7 +227,7 @@ class Attention(nn.Module):
 class Block(nn.Module):
 
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0.,
-                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, cur_depth=0, moe_interval=3, num_experts=4, Hierachical=False, DW_Routing=False, index_hook=False):
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, cur_depth=0, moe_interval=3, num_experts=4, Hierachical=False, index_hook=False):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.attn = Attention(dim, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop, proj_drop=drop)
@@ -238,8 +238,6 @@ class Block(nn.Module):
         self.is_moe_layer = False
         mlp_hidden_dim = int(dim * mlp_ratio)
         if (cur_depth + 1) % moe_interval == 0:
-            if DW_Routing:
-                print('Layer {} is using Domain-aware Routing'.format(cur_depth + 1))
             if Hierachical:
                 self.mlp = HierarchicalMoE(
                     dim=dim,
@@ -259,7 +257,6 @@ class Block(nn.Module):
                     capacity_factor_train=1.25,  # experts have fixed capacity per batch. we need some extra capacity in case gating is not perfectly balanced.
                     capacity_factor_eval=2.,  # capacity_factor_* should be set to a value >=1
                     loss_coef=1e-2,  # multiplier on the auxiliary expert balancing auxiliary loss,
-                    DW_Routing=DW_Routing,
                     index_hook=index_hook
                 )
                 self.is_moe_layer = True
@@ -339,8 +336,7 @@ class VisionTransformer(nn.Module):
             Block(
                 dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop_rate,
                 attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, act_layer=act_layer,
-                cur_depth=i, moe_interval=moe_interval, num_experts=num_experts, Hierachical=Hierachical,
-                DW_Routing=DW_Routing, index_hook=index_hook)
+                cur_depth=i, moe_interval=moe_interval, num_experts=num_experts, Hierachical=Hierachical, index_hook=index_hook)
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
 

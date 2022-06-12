@@ -4,3 +4,4 @@ Pillow==9.0.1
 prettytable==2.1.0
 sconf==0.2.3
 tensorboardX==2.5
+mixture_of_experts==0.2.1

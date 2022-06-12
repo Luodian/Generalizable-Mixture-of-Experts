@@ -63,22 +63,6 @@ python3 -m domainbed.scripts.train\
        --test_env 2
 ```
 
-Launch a sweep:
-
-```sh
-python -m domainbed.scripts.sweep launch\
-       --data_dir=/my/datasets/path\
-       --output_dir=/my/sweep/output/path\
-       --command_launcher multi_gpu
-```
-
-To view the results of your sweep:
-
-````sh
-python -m domainbed.scripts.collect_results\
-       --input_dir=/my/sweep/output/path
-````
-
 To visualize attention heads output
 ```shell
 python exps/vis_attention.py
@@ -135,3 +119,6 @@ We share the SF-MoE trained models and records on DomainNet via the following [d
 ## License
 
 This source code is released under the MIT license, included [here](LICENSE).
+
+## Acknowledgement
+This repo's kernel module is built on [lucidrains/mixture_of_experts](https://github.com/lucidrains/mixture-of-experts)
