@@ -228,7 +228,7 @@ class SFMOE(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(SFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer.deit_small_distilled_patch16_224(pretrained=True, num_classes=num_classes, moe_interval=4, num_experts=4, Hierachical=False).cuda()
+        self.model = vision_transformer.deit_small_distilled_patch16_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 4 + ['S', 'F'] * 4, mlp_ratio=4., num_experts=4, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
     def update(self, minibatches, unlabeled=None):
