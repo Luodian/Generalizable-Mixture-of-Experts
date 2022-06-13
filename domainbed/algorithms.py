@@ -162,7 +162,7 @@ class HybridSFMOE(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(HybridSFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, moe_interval=3, num_experts=6, Hierachical=False).cuda()
+        self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 5 + ['S'] + ['F'] * 5 + ['S'], num_experts=6, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
     def update(self, minibatches, unlabeled=None):
@@ -200,7 +200,7 @@ class HybridVIT(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(HybridVIT, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, moe_interval=24, num_experts=4, Hierachical=False).cuda()
+        self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, num_experts=4, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
     def update(self, minibatches, unlabeled=None):
@@ -228,7 +228,7 @@ class SFMOE(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(SFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer.deit_small_distilled_patch16_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 4 + ['S', 'F'] * 4, mlp_ratio=4., num_experts=4, Hierachical=False).cuda()
+        self.model = vision_transformer.deit_small_distilled_patch16_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 5 + ['S'] + ['F'] * 5 + ['S'], mlp_ratio=4., num_experts=4, Hierachical=False).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
 
     def update(self, minibatches, unlabeled=None):
