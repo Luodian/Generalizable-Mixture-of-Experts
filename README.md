@@ -114,7 +114,7 @@ Our Hyper-parameters for each dataset:
 </p>
 
 ### Model Zoo & Records
-We share the SF-MoE trained models and records on DomainNet via the following [directory](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/ElEEAWuckgZKlDsK6inCa0UBs-KJcCG49ef30wmFmmW1og?e=2Gl0w0). The records follow the [DomainBed](https://github.com/facebookresearch/DomainBed) format.
+We will later share the SF-MoE trained models and records on DomainNet via the following [directory](https://entuedu-my.sharepoint.com/:f:/g/personal/libo0013_e_ntu_edu_sg/ElEEAWuckgZKlDsK6inCa0UBs-KJcCG49ef30wmFmmW1og?e=2Gl0w0). The records follow the [DomainBed](https://github.com/facebookresearch/DomainBed) format.
 
 ## License
 
