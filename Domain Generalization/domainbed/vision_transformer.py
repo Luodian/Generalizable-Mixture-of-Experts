@@ -236,8 +236,7 @@ class Attention(nn.Module):
 
 class Block(nn.Module):
 
-    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0., drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, cur_depth=0, moe_layers=None, num_experts=4, index_hook=False, is_tutel=True, hier=False,
-                 router='cosine_top'):
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0., drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, cur_depth=0, moe_layers=None, num_experts=6, router='cosine_top'):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.attn = Attention(dim, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop, proj_drop=drop)
@@ -252,49 +251,16 @@ class Block(nn.Module):
         self.is_tutel = is_tutel
         self.aux_loss_weights = 0.01
         if self.cur_layer == 'S':
-            if self.is_tutel:
-                # print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with BPR True')
-                self.mlp = tutel_moe.moe_layer(
-                    gate_type={'type': router, 'k': 1, 'fp32_gate': True, 'gate_noise': 1.0, 'capacity_factor': 1.5},
-                    experts={'type': 'ffn', 'count_per_node': num_experts,
-                             'hidden_size_per_expert': mlp_hidden_dim,
-                             'activation_fn': lambda x: self.moe_drop(F.gelu(x))},
-                    model_dim=dim,
-                    batch_prioritized_routing=True,
-                    is_gshard_loss=False,
-                )
-            else:
-                if hier is True:
-                    print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with Hierachical MoE')
-                    self.mlp = HierarchicalMoE(
-                        dim=dim,
-                        num_experts=num_experts,  # increase the experts (# parameters) of your model without increasing computation
-                        hidden_dim=mlp_hidden_dim,  # size of hidden dimension in each expert, defaults to 4 * dimension
-                        activation=act_layer,  # use your preferred activation, will default to GELU
-                        second_policy_train='random',  # in top_2 gating, policy for whether to use a second-place expert
-                        second_policy_eval='random',  # all (always) | none (never) | threshold (if gate value > the given threshold) | random (if gate value > threshold * random_uniform(0, 1))
-                        second_threshold_train=0.2,
-                        second_threshold_eval=0.2,
-                        capacity_factor_train=1.25,  # experts have fixed capacity per batch. we need some extra capacity in case gating is not perfectly balanced.
-                        capacity_factor_eval=2.,  # capacity_factor_* should be set to a value >=1
-                        loss_coef=1e-2,  # multiplier on the auxiliary expert balancing auxiliary loss,
-                    )
-                else:
-                    print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with Plain MoE')
-                    self.mlp = MoE(
-                        dim=dim,
-                        num_experts=num_experts,  # increase the experts (# parameters) of your model without increasing computation
-                        hidden_dim=mlp_hidden_dim,  # size of hidden dimension in each expert, defaults to 4 * dimension
-                        activation=act_layer,  # use your preferred activation, will default to GELU
-                        second_policy_train='random',  # in top_2 gating, policy for whether to use a second-place expert
-                        second_policy_eval='random',  # all (always) | none (never) | threshold (if gate value > the given threshold) | random (if gate value > threshold * random_uniform(0, 1))
-                        second_threshold_train=0.2,
-                        second_threshold_eval=0.2,
-                        capacity_factor_train=1.25,  # experts have fixed capacity per batch. we need some extra capacity in case gating is not perfectly balanced.
-                        capacity_factor_eval=2.,  # capacity_factor_* should be set to a value >=1
-                        loss_coef=1e-2,  # multiplier on the auxiliary expert balancing auxiliary loss,
-                        index_hook=index_hook,
-                    )
+            # print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with BPR True')
+            self.mlp = tutel_moe.moe_layer(
+                gate_type={'type': router, 'k': 1, 'fp32_gate': True, 'gate_noise': 1.0, 'capacity_factor': 1.5},
+                experts={'type': 'ffn', 'count_per_node': num_experts,
+                         'hidden_size_per_expert': mlp_hidden_dim,
+                         'activation_fn': lambda x: self.moe_drop(F.gelu(x))},
+                model_dim=dim,
+                batch_prioritized_routing=True,
+                is_gshard_loss=False,
+            )
         else:
             self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
@@ -328,8 +294,7 @@ class VisionTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=True, representation_size=None, distilled=False,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0., embed_layer=PatchEmbed, norm_layer=None,
-                 act_layer=None, weight_init='', moe_layers=None, num_experts=6, index_hook=False, is_tutel=True,
-                 hier=True, router='cosine_top'):
+                 act_layer=None, weight_init='', moe_layers=None, num_experts=6, index_hook=False, router='cosine_top'):
         """
         Args:
             img_size (int, tuple): input image size
@@ -370,7 +335,7 @@ class VisionTransformer(nn.Module):
             Block(
                 dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop_rate,
                 attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, act_layer=act_layer,
-                cur_depth=i, moe_layers=moe_layers, num_experts=num_experts, index_hook=index_hook, is_tutel=is_tutel, hier=hier, router=router)
+                cur_depth=i, moe_layers=moe_layers, num_experts=num_experts, index_hook=index_hook, router=router)
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
 

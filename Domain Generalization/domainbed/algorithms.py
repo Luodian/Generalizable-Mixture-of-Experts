@@ -27,10 +27,6 @@ except:
 
 from domainbed import networks
 from domainbed import resnet_variants
-from models.moe_layer.resnet.moe_block_layer import MoeBlockLayer
-from models.moe_layer.resnet.bottleneck_expert import ResNet50Expert
-from models.moe_layer.resnet50.resnet50_moe import ResNet50MoE
-from models.moe_layer.soft_gating_networks import SimpleGate
 import torchvision.models as models
 
 ALGORITHMS = [
