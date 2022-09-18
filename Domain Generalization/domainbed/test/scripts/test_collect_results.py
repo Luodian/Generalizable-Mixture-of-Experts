@@ -38,7 +38,7 @@ class TestCollectResults(unittest.TestCase):
         sys.stdout = temp_out
         table = [['1', '2'], ['3', '4']]
         collect_results.print_table(table, 'Header text', ['R1', 'R2'],
-            ['C1', 'C2'], colwidth=10, latex=False)
+                                    ['C1', 'C2'], colwidth=10, latex=False)
         sys.stdout = sys.__stdout__
         self.assertEqual(
             temp_out.getvalue(),
@@ -55,7 +55,7 @@ class TestCollectResults(unittest.TestCase):
         sys.stdout = temp_out
         table = [['1', '2'], ['3', '4']]
         collect_results.print_table(table, 'Header text', ['R1', 'R2'],
-            ['C1', 'C2'], colwidth=10, latex=True)
+                                    ['C1', 'C2'], colwidth=10, latex=True)
         sys.stdout = sys.__stdout__
         self.assertEqual(
             temp_out.getvalue(),

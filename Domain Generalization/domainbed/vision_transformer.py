@@ -27,17 +27,23 @@ import math
 from collections import OrderedDict
 from functools import partial
 
+import sys
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
-from timm.models.helpers import build_model_with_cfg, named_apply, adapt_input_conv
+
+sys.path.append(f"{os.getenv('DOMAINBED_PROJECT_DIR')}/domainbed")
+
+from vit_helpers import build_model_with_cfg, named_apply, adapt_input_conv
 from timm.models.layers import PatchEmbed, Mlp, DropPath, trunc_normal_, lecun_normal_
 from timm.models.registry import register_model
-import sys
 
-sys.path.append("/mnt/lustre/bli/projects/EIL/domainbed")
-from mixture_of_experts import MoE, HierarchicalMoE
+if float(torch.version.cuda) > 10.1:
+    # tutel only works above cuda 10.1
+    from tutel import moe as tutel_moe
 
 _logger = logging.getLogger(__name__)
 
@@ -86,6 +92,10 @@ default_cfgs = {
     'vit_base_patch16_224': _cfg(
         url='https://storage.googleapis.com/vit_models/augreg/'
             'B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.01-res_224.npz'),
+    'vit_clip_base_patch16_224': _cfg(
+        url='https://openaipublic.azureedge.net/clip/models/5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f/ViT-B-16.pt'),
+    'vit_clip_large_patch16_224': _cfg(
+        url='https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt'),
     'vit_base_patch16_384': _cfg(
         url='https://storage.googleapis.com/vit_models/augreg/'
             'B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.01-res_384.npz',
@@ -226,8 +236,8 @@ class Attention(nn.Module):
 
 class Block(nn.Module):
 
-    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0.,
-                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, cur_depth=0, moe_layers=None, num_experts=4, Hierachical=False, index_hook=False):
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0., drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, cur_depth=0, moe_layers=None, num_experts=4, index_hook=False, is_tutel=True, hier=False,
+                 router='cosine_top'):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.attn = Attention(dim, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop, proj_drop=drop)
@@ -237,49 +247,72 @@ class Block(nn.Module):
         self.aux_loss = None
         self.is_moe_layer = False
         mlp_hidden_dim = int(dim * mlp_ratio)
-        cur_layer = moe_layers[cur_depth] if moe_layers is not None else 'F'
-        if cur_layer == 'S':
-            if Hierachical:
-                self.mlp = HierarchicalMoE(
-                    dim=dim,
-                    num_experts=num_experts,  # 4 gates on the first layer, then 4 experts on the second, equaling 16 experts
+        self.cur_layer = moe_layers[cur_depth] if moe_layers is not None else 'F'
+        self.moe_drop = nn.Dropout(0.1)
+        self.is_tutel = is_tutel
+        self.aux_loss_weights = 0.01
+        if self.cur_layer == 'S':
+            if self.is_tutel:
+                # print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with BPR True')
+                self.mlp = tutel_moe.moe_layer(
+                    gate_type={'type': router, 'k': 1, 'fp32_gate': True, 'gate_noise': 1.0, 'capacity_factor': 1.5},
+                    experts={'type': 'ffn', 'count_per_node': num_experts,
+                             'hidden_size_per_expert': mlp_hidden_dim,
+                             'activation_fn': lambda x: self.moe_drop(F.gelu(x))},
+                    model_dim=dim,
+                    batch_prioritized_routing=True,
+                    is_gshard_loss=False,
                 )
-                self.is_moe_layer = True
             else:
-                self.mlp = MoE(
-                    dim=dim,
-                    num_experts=num_experts,  # increase the experts (# parameters) of your model without increasing computation
-                    hidden_dim=mlp_hidden_dim,  # size of hidden dimension in each expert, defaults to 4 * dimension
-                    activation=act_layer,  # use your preferred activation, will default to GELU
-                    second_policy_train='random',  # in top_2 gating, policy for whether to use a second-place expert
-                    second_policy_eval='random',  # all (always) | none (never) | threshold (if gate value > the given threshold) | random (if gate value > threshold * random_uniform(0, 1))
-                    second_threshold_train=0.2,
-                    second_threshold_eval=0.2,
-                    capacity_factor_train=1.25,  # experts have fixed capacity per batch. we need some extra capacity in case gating is not perfectly balanced.
-                    capacity_factor_eval=2.,  # capacity_factor_* should be set to a value >=1
-                    loss_coef=1e-2,  # multiplier on the auxiliary expert balancing auxiliary loss,
-                    index_hook=index_hook
-                )
-                self.is_moe_layer = True
+                if hier is True:
+                    print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with Hierachical MoE')
+                    self.mlp = HierarchicalMoE(
+                        dim=dim,
+                        num_experts=num_experts,  # increase the experts (# parameters) of your model without increasing computation
+                        hidden_dim=mlp_hidden_dim,  # size of hidden dimension in each expert, defaults to 4 * dimension
+                        activation=act_layer,  # use your preferred activation, will default to GELU
+                        second_policy_train='random',  # in top_2 gating, policy for whether to use a second-place expert
+                        second_policy_eval='random',  # all (always) | none (never) | threshold (if gate value > the given threshold) | random (if gate value > threshold * random_uniform(0, 1))
+                        second_threshold_train=0.2,
+                        second_threshold_eval=0.2,
+                        capacity_factor_train=1.25,  # experts have fixed capacity per batch. we need some extra capacity in case gating is not perfectly balanced.
+                        capacity_factor_eval=2.,  # capacity_factor_* should be set to a value >=1
+                        loss_coef=1e-2,  # multiplier on the auxiliary expert balancing auxiliary loss,
+                    )
+                else:
+                    print(f'cur_layer {cur_depth} is sparse with {num_experts} experts with Plain MoE')
+                    self.mlp = MoE(
+                        dim=dim,
+                        num_experts=num_experts,  # increase the experts (# parameters) of your model without increasing computation
+                        hidden_dim=mlp_hidden_dim,  # size of hidden dimension in each expert, defaults to 4 * dimension
+                        activation=act_layer,  # use your preferred activation, will default to GELU
+                        second_policy_train='random',  # in top_2 gating, policy for whether to use a second-place expert
+                        second_policy_eval='random',  # all (always) | none (never) | threshold (if gate value > the given threshold) | random (if gate value > threshold * random_uniform(0, 1))
+                        second_threshold_train=0.2,
+                        second_threshold_eval=0.2,
+                        capacity_factor_train=1.25,  # experts have fixed capacity per batch. we need some extra capacity in case gating is not perfectly balanced.
+                        capacity_factor_eval=2.,  # capacity_factor_* should be set to a value >=1
+                        loss_coef=1e-2,  # multiplier on the auxiliary expert balancing auxiliary loss,
+                        index_hook=index_hook,
+                    )
         else:
             self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
-            self.is_moe_layer = False
 
     def forward(self, x, return_attention=False):
         if return_attention:
             y, attn = self.attn(self.norm1(x), return_attention=True)
             return attn
-        else:
+        if self.cur_layer == 'S':
             x = x + self.drop_path(self.attn(self.norm1(x)))
-            if hasattr(self.mlp, 'experts'):
-                x_temp, aux_loss = self.mlp(self.norm2(x))
-                self.aux_loss = aux_loss
-            elif hasattr(self.mlp, 'fc1'):
-                x_temp = self.mlp(self.norm2(x))
-            else:
-                raise Exception
-            x = x + self.drop_path(x_temp)
+            x = x + self.drop_path(self.mlp(self.norm2(x)))
+            self.aux_loss = self.mlp.l_aux * self.aux_loss_weights
             return x
+        elif self.cur_layer == 'F':
+            x = x + self.drop_path(self.attn(self.norm1(x)))
+            x = x + self.drop_path(self.mlp(self.norm2(x)))
+            return x
+        else:
+            raise Exception
 
 
 class VisionTransformer(nn.Module):
@@ -295,7 +328,8 @@ class VisionTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=True, representation_size=None, distilled=False,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0., embed_layer=PatchEmbed, norm_layer=None,
-                 act_layer=None, weight_init='', moe_layers=None, num_experts=4, Hierachical=False, index_hook=False):
+                 act_layer=None, weight_init='', moe_layers=None, num_experts=6, index_hook=False, is_tutel=True,
+                 hier=True, router='cosine_top'):
         """
         Args:
             img_size (int, tuple): input image size
@@ -323,8 +357,7 @@ class VisionTransformer(nn.Module):
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         act_layer = act_layer or nn.GELU
 
-        self.patch_embed = embed_layer(
-            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
+        self.patch_embed = embed_layer(img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -333,11 +366,11 @@ class VisionTransformer(nn.Module):
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
-        self.blocks = nn.Sequential(*[
+        self.blocks = nn.ModuleList([
             Block(
                 dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop_rate,
                 attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, act_layer=act_layer,
-                cur_depth=i, moe_layers=moe_layers, num_experts=num_experts, Hierachical=Hierachical, index_hook=index_hook)
+                cur_depth=i, moe_layers=moe_layers, num_experts=num_experts, index_hook=index_hook, is_tutel=is_tutel, hier=hier, router=router)
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
 
@@ -358,6 +391,10 @@ class VisionTransformer(nn.Module):
             self.head_dist = nn.Linear(self.embed_dim, self.num_classes) if num_classes > 0 else nn.Identity()
 
         self.init_weights(weight_init)
+        self._ddp_params_and_buffers_to_ignore = list()
+
+    def add_param_to_skip_allreduce(self, param_name):
+        self._ddp_params_and_buffers_to_ignore.append(param_name)
 
     def init_weights(self, mode=''):
         assert mode in ('jax', 'jax_nlhb', 'nlhb', '')
@@ -396,7 +433,7 @@ class VisionTransformer(nn.Module):
         if self.num_tokens == 2:
             self.head_dist = nn.Linear(self.embed_dim, self.num_classes) if num_classes > 0 else nn.Identity()
 
-    def forward_features(self, x):
+    def forward_features(self, x, domain_index=None):
         x = self.patch_embed(x)
         cls_token = self.cls_token.expand(x.shape[0], -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
         if self.dist_token is None:
@@ -404,15 +441,16 @@ class VisionTransformer(nn.Module):
         else:
             x = torch.cat((cls_token, self.dist_token.expand(x.shape[0], -1, -1), x), dim=1)
         x = self.pos_drop(x + self.pos_embed)
-        x = self.blocks(x)
+        for blk in self.blocks:
+            x = blk(x, domain_index)
         x = self.norm(x)
         if self.dist_token is None:
             return self.pre_logits(x[:, 0])
         else:
             return x[:, 0], x[:, 1]
 
-    def forward(self, x):
-        x = self.forward_features(x)
+    def forward(self, x, domain_index=None):
+        x = self.forward_features(x, domain_index)
         if self.head_dist is not None:
             x, x_dist = self.head(x[0]), self.head_dist(x[1])  # x must be a tuple
             if self.training and not torch.jit.is_scripting():
@@ -547,9 +585,13 @@ def _load_weights(model: VisionTransformer, checkpoint_path: str, prefix: str = 
         block.attn.proj.weight.copy_(_n2p(w[f'{mha_prefix}out/kernel']).flatten(1))
         block.attn.proj.bias.copy_(_n2p(w[f'{mha_prefix}out/bias']))
         for r in range(2):
-            num_experts = getattr(block.mlp, 'experts').w1.shape[0]
-            for ind in range(num_experts):
-                getattr(block.mlp.experts, f'w{r + 1}')[ind].copy_(torch.from_numpy(w[f'{block_prefix}MlpBlock_3/Dense_{r}/kernel']))
+            if hasattr(block.mlp, 'experts'):
+                num_experts = getattr(block.mlp, 'experts').fc1.shape[0]
+                for ind in range(num_experts):
+                    getattr(block.mlp.experts, f'fc{r + 1}')[ind].copy_(torch.from_numpy(w[f'{block_prefix}MlpBlock_3/Dense_{r}/kernel']))
+            else:
+                getattr(block.mlp, f'fc{r + 1}').weight.copy_(_n2p(w[f'{block_prefix}MlpBlock_3/Dense_{r}/kernel']))
+                getattr(block.mlp, f'fc{r + 1}').bias.copy_(_n2p(w[f'{block_prefix}MlpBlock_3/Dense_{r}/bias']))
         block.norm2.weight.copy_(_n2p(w[f'{block_prefix}LayerNorm_2/scale']))
         block.norm2.bias.copy_(_n2p(w[f'{block_prefix}LayerNorm_2/bias']))
 

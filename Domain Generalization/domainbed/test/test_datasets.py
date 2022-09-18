@@ -39,7 +39,7 @@ class TestDatasets(unittest.TestCase):
         dataset = datasets.get_dataset_class(dataset_name)(
             os.environ['DATA_DIR'], [], hparams)
         self.assertEqual(datasets.num_environments(dataset_name),
-            len(dataset))
+                         len(dataset))
         algorithm = algorithms.get_algorithm_class('ERM')(
             dataset.input_shape,
             dataset.num_classes,

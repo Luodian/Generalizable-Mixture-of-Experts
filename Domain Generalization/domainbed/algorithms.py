@@ -60,9 +60,7 @@ ALGORITHMS = [
     'IB_IRM',
     'CAD',
     'CondCAD',
-    'HybridSFMOE', 'SFMOE',
-    'VIT',
-    'Mixer',
+    'GMOE'
 ]
 
 
@@ -155,140 +153,6 @@ class ERM_SMA(Algorithm, MovingAvg):
         return self.network_sma(x)
 
 
-class HybridSFMOE(Algorithm):
-    """
-    SFMOE
-    """
-
-    def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(HybridSFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 5 + ['S'] + ['F'] * 5 + ['S'], num_experts=6, Hierachical=False).cuda()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
-
-    def update(self, minibatches, unlabeled=None):
-        all_x = torch.cat([x for x, y in minibatches])
-        all_y = torch.cat([y for x, y in minibatches])
-        loss = F.cross_entropy(self.predict(all_x), all_y)
-        loss_aux_list = []
-        for block in self.model.blocks:
-            if getattr(block, 'aux_loss') is not None:
-                loss_aux_list.append(block.aux_loss)
-
-        loss_aux = 0
-        for layer_loss in loss_aux_list:
-            loss_aux += layer_loss
-
-        loss += loss_aux
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return {'loss': loss.item(), 'loss_aux': loss_aux.item()}
-
-    def predict(self, x):
-        prediction = self.model(x)
-        if type(prediction) is tuple:
-            return (prediction[0] + prediction[1]) / 2
-        else:
-            return prediction
-
-
-class HybridVIT(Algorithm):
-    """
-    SFMOE
-    """
-
-    def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(HybridVIT, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer_hybrid.vit_small_r26_s32_224(pretrained=True, num_classes=num_classes, num_experts=4, Hierachical=False).cuda()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
-
-    def update(self, minibatches, unlabeled=None):
-        all_x = torch.cat([x for x, y in minibatches])
-        all_y = torch.cat([y for x, y in minibatches])
-        loss = F.cross_entropy(self.predict(all_x), all_y)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return {'loss': loss.item()}
-
-    def predict(self, x):
-        prediction = self.model(x)
-        if type(prediction) is tuple:
-            return (prediction[0] + prediction[1]) / 2
-        else:
-            return prediction
-
-
-class SFMOE(Algorithm):
-    """
-    SFMOE
-    """
-
-    def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(SFMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer.deit_small_distilled_patch16_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 5 + ['S'] + ['F'] * 5 + ['S'], mlp_ratio=4., num_experts=4, Hierachical=False).cuda()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
-
-    def update(self, minibatches, unlabeled=None):
-        all_x = torch.cat([x for x, y in minibatches])
-        all_y = torch.cat([y for x, y in minibatches])
-        loss = F.cross_entropy(self.predict(all_x), all_y)
-        loss_aux_list = []
-        for block in self.model.blocks:
-            if getattr(block, 'aux_loss') is not None:
-                loss_aux_list.append(block.aux_loss)
-
-        loss_aux = 0
-        for layer_loss in loss_aux_list:
-            loss_aux += layer_loss
-
-        loss += loss_aux
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return {'loss': loss.item(), 'loss_aux': loss_aux.item()}
-
-    def predict(self, x):
-        prediction = self.model(x)
-        if type(prediction) is tuple:
-            return (prediction[0] + prediction[1]) / 2
-        else:
-            return prediction
-
-
-class VIT(Algorithm):
-    """
-    Empirical Risk Minimization (ERM)
-    """
-
-    def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(VIT, self).__init__(input_shape, num_classes, num_domains, hparams)
-        self.model = vision_transformer.vit_small_patch16_224(num_classes=num_classes, moe_interval=64).cuda()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
-
-    def update(self, minibatches, unlabeled=None):
-        all_x = torch.cat([x for x, y in minibatches])
-        all_y = torch.cat([y for x, y in minibatches])
-        loss = F.cross_entropy(self.predict(all_x), all_y)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return {'loss': loss.item()}
-
-    def predict(self, x):
-        # return self.vit(x)
-        prediction = self.model(x)
-        if type(prediction) is tuple:
-            return (prediction[0] + prediction[1]) / 2
-        else:
-            return prediction
-
-
 class ERM(Algorithm):
     """
     Empirical Risk Minimization (ERM)
@@ -323,6 +187,47 @@ class ERM(Algorithm):
 
     def predict(self, x):
         return self.network(x)
+
+
+class GMOE(Algorithm):
+    """
+    SFMOE
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(GMOE, self).__init__(input_shape, num_classes, num_domains, hparams)
+        self.model = vision_transformer.deit_small_patch16_224(pretrained=True, num_classes=num_classes, moe_layers=['F'] * 8 + ['S', 'F'] * 2, mlp_ratio=4., num_experts=6, is_tutel=True, drop_path_rate=0.1, router='cosine_top').cuda()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams['weight_decay'])
+
+    def update(self, minibatches, unlabeled=None):
+        all_x = torch.cat([x for x, y in minibatches])
+        all_y = torch.cat([y for x, y in minibatches])
+        loss = F.cross_entropy(self.predict(all_x), all_y)
+        loss_aux_list = []
+        for block in self.model.blocks:
+            if getattr(block, 'aux_loss') is not None:
+                loss_aux_list.append(block.aux_loss)
+
+        loss_aux = 0
+        for layer_loss in loss_aux_list:
+            loss_aux += layer_loss
+
+        loss += loss_aux
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item(), 'loss_aux': loss_aux.item()}
+
+    def predict(self, x, forward_feature=False):
+        if forward_feature:
+            return self.model.forward_features(x)
+        else:
+            prediction = self.model(x)
+            if type(prediction) is tuple:
+                return (prediction[0] + prediction[1]) / 2
+            else:
+                return prediction
 
 
 class Fish(Algorithm):

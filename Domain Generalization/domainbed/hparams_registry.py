@@ -168,30 +168,36 @@ def _hparams(algorithm, dataset, random_seed):
     elif algorithm in ['DANN', 'CDANN']:
         _hparam('weight_decay_g', 0., lambda r: 10 ** r.uniform(-6, -2))
 
-    if dataset == 'VLCS':
-        _hparam('lr', 1e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
-        _hparam('resnet_dropout', 0.5, lambda r: r.choice([0., 0.1, 0.5]))
-        _hparam('weight_decay', 1e-6, lambda r: 0.)
+    if 'GMOE' in algorithm:
+        if dataset == 'VLCS':
+            _hparam('lr', 3e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
+            _hparam('resnet_dropout', 0.5, lambda r: r.choice([0., 0.1, 0.5]))
+            _hparam('weight_decay', 1e-6, lambda r: 0.)
 
-    if dataset == 'PACS':
-        _hparam('lr', 3e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
-        _hparam('resnet_dropout', 0.0, lambda r: r.choice([0., 0.1, 0.5]))
-        _hparam('weight_decay', 0., lambda r: 0.)
+        if dataset == 'PACS':
+            _hparam('lr', 3e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
+            _hparam('resnet_dropout', 0.0, lambda r: r.choice([0., 0.1, 0.5]))
+            _hparam('weight_decay', 1e-6, lambda r: 0.)
 
-    if dataset == 'OfficeHome':
-        _hparam('lr', 3e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
-        _hparam('resnet_dropout', 0.1, lambda r: r.choice([0., 0.1, 0.5]))
-        _hparam('weight_decay', 1e-6, lambda r: 0.)
+        if dataset == 'OfficeHome':
+            _hparam('lr', 1e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
+            _hparam('resnet_dropout', 0.1, lambda r: r.choice([0., 0.1, 0.5]))
+            _hparam('weight_decay', 1e-6, lambda r: 0.)
 
-    if dataset == 'TerraIncognita':
-        _hparam('lr', 3e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
-        _hparam('resnet_dropout', 0.0, lambda r: r.choice([0., 0.1, 0.5]))
-        _hparam('weight_decay', 1e-4, lambda r: 0.)
+        if dataset == 'TerraIncognita':
+            _hparam('lr', 5e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
+            _hparam('resnet_dropout', 0.0, lambda r: r.choice([0., 0.1, 0.5]))
+            _hparam('weight_decay', 1e-4, lambda r: 0.)
 
-    if dataset == 'DomainNet':
-        _hparam('lr', 3e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
-        _hparam('resnet_dropout', 0.1, lambda r: r.choice([0., 0.1, 0.5]))
-        _hparam('weight_decay', 0., lambda r: 0.)
+        if dataset == 'DomainNet':
+            _hparam('lr', 5e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
+            _hparam('resnet_dropout', 0.1, lambda r: r.choice([0., 0.1, 0.5]))
+            _hparam('weight_decay', 0, lambda r: 0.)
+
+        if dataset == 'CUB':
+            _hparam('lr', 5e-5, lambda r: 10 ** r.uniform(-4.5, -2.5))
+            _hparam('resnet_dropout', 0.1, lambda r: r.choice([0., 0.1, 0.5]))
+            _hparam('weight_decay', 0, lambda r: 0.)
 
     return hparams
 

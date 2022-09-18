@@ -34,12 +34,12 @@ def todo_rename(records, selection_method, latex):
 
     grouped_records = reporting.get_grouped_records(records).map(lambda group:
         { **group, "sweep_acc": selection_method.sweep_acc(group["records"]) }
-    ).filter(lambda g: g["sweep_acc"] is not None)
+                                                                 ).filter(lambda g: g["sweep_acc"] is not None)
 
     # read algorithm names and sort (predefined order)
     alg_names = Q(records).select("args.algorithm").unique()
     alg_names = ([n for n in algorithms.ALGORITHMS if n in alg_names] +
-        [n for n in alg_names if n not in algorithms.ALGORITHMS])
+                 [n for n in alg_names if n not in algorithms.ALGORITHMS])
 
     # read dataset names and sort (lexicographic order)
     dataset_names = Q(records).select("args.dataset").unique().sorted()
