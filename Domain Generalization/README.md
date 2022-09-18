@@ -1,8 +1,8 @@
-# Welcome to Sparse Fusion Mixture-of-Experts for Domain Generalization
+# Welcome to Generalizable Mixture-of-Experts for Domain Generalization
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sparse-fusion-mixture-of-experts-are-domain/domain-generalization-on-domainnet)](https://paperswithcode.com/sota/domain-generalization-on-domainnet?p=sparse-fusion-mixture-of-experts-are-domain)
 
-In this work, we reveal the mixture-of-experts (MoE) model's generalizability on DG by leveraging to distributively handle multiple aspects of the predictive features across domains.
+In this work, we reveal the mixture-of-experts (MoE) model's generalizability on DG.
 
 ### Preparation
 

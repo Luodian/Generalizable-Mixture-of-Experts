@@ -1,5 +1,5 @@
 gdown==4.2.0
-numpy==1.21.4
+numpy>=1.22
 Pillow==9.0.1
 prettytable==2.1.0
 sconf==0.2.3
