@@ -1,8 +1,9 @@
-# Welcome to Generalizable Mixture-of-Experts for Domain Generalization (ICLR 2023, Oral Presentation)
+# Welcome to Generalizable Mixture-of-Experts for Domain Generalization
 
-GMoE-S/16 model currently [ranks 1st place](https://paperswithcode.com/sota/domain-generalization-on-domainnet) among multiple DG datasets without extra pre-training data.
+🔥 Our paper [Sparse Mixture-of-Experts are Domain Generalizable Learners](https://openreview.net/forum?id=RecZ9nB9Q4) has officially been accepted as ICLR 2023 for Oral presentation. 
+🔥 GMoE-S/16 model currently [ranks 1st place](https://paperswithcode.com/sota/domain-generalization-on-domainnet) among multiple DG datasets without extra pre-training data. Our GMoE-S/16 is initilized on DeiT-S/16, which was only pretrained on ImageNet-1K.
 
-In this work, we reveal the mixture-of-experts (MoE) model's generalizability on DG.
+Wondering why it achieves astonishing performance? 🤯 Let's investigate the generalization ability of model architecture itself and see the great potentials of Sparse Mixture-of-Experts (MoE) architecture.
 
 ### Preparation
 
